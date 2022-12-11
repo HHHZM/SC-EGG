@@ -1,8 +1,9 @@
 # Semantic Compression Embedding for Generative Zero-Shot Learning
 
-**<font color='coral'>!!! Updates of this project will be finished before </font>*****<font color='purple'>Jan 1, 2023.</font>***
+**<font color='orange'>!!! Updates of this project will be finished before </font>*****<font color='green'>Jan 1, 2023.</font>***
 
 This repository contains online resources of the paper **"Semantic Compression Embedding for Generative Zero-Shot Learning"** accepted to IJCAI-2022. [[PDF](https://www.ijcai.org/proceedings/2022/0134.pdf)]
+
 **Motivation** (**Left**: existing generative ZSLs, **Right**: proposed SC-EGG):
 <div align="center">
 <img src="figs/motivation_a.png" width="49%">
