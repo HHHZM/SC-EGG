@@ -1,12 +1,17 @@
 # Semantic Compression Embedding for Generative Zero-Shot Learning
 This repository contains online resources of the paper **"Semantic Compression Embedding for Generative Zero-Shot Learning"** accepted to IJCAI-2022. [[PDF](https://www.ijcai.org/proceedings/2022/0134.pdf)]
 
+Motivation (**Left**: existing generative ZSLs, **Right**: proposed SC-EGG):
+<div align="center">
+<img src="figs/motivation_a.png" width="49%">
+<img src="figs/motivation_b.png" width="49%">
+</div>
+
 ## Environment
 The implementation of **SC-EGG** is mainly based on Python 3.8.8 and [PyTorch](https://pytorch.org/) 1.8.0. We use [Weights & Biases](https://wandb.ai/site) (W&B) to keep track and organize the results of experiments. Please follow the [online documentation](https://docs.wandb.ai/quickstart) of W&B to quickstart. To install all required dependencies:
 ```
 $ pip install -r requirements.txt
 ```
-
 ## Datasets
 We trained the model on [CUB](http://www.vision.caltech.edu/visipedia/CUB-200-2011.html), [SUN](http://cs.brown.edu/~gmpatter/sunattributes.html) and [AWA2](http://cvml.ist.ac.at/AwA2/) following the data split of [xlsa17](http://datasets.d2.mpi-inf.mpg.de/xian/xlsa17.zip). In order to train the **SC-EGG**, you should firstly download these datasets as well as the xlsa17. Then decompress and organize them as follows: 
 ```
