@@ -4,27 +4,22 @@ import torch.nn as nn
 from torch.autograd import Variable
 import torch.optim as optim
 import numpy as np
-import util
+import datasets.image_util as util
 from sklearn.preprocessing import MinMaxScaler 
 import sys
 import copy
 import pdb
-from sklearn.decomposition import PCA
-# from config import opt
-# from KNN import knn_classifier_cuda
-from sklearn.neighbors import KNeighborsClassifier
 
 class CLASSIFIER:
     # train_Y is interger 
-    def __init__(self, _train_X, _train_Y, data_loader, _nclass, _cuda, _lr=0.001, _beta1=0.5,
-                 _nepoch=20, _batch_size=100, generalized=True, final_classifier=None,
-                 netFR=None, dec_size=4096, dec_hidden_size=4096, opt=None):
-        self.opt = opt
-        self.train_X = _train_X.clone()
+    def __init__(self, _train_X, _train_Y, _test_seen_X, _test_unseen_X, data_loader,
+                 _nclass, _cuda, _lr=0.001, _beta1=0.5, _nepoch=20, _batch_size=100,
+                 generalized=True, netDec=None, dec_size=4096, dec_hidden_size=4096):
+        self.train_X =  _train_X.clone() 
         self.train_Y = _train_Y.clone() 
-        self.test_seen_feature = data_loader.test_seen_feature.clone()
+        self.test_seen_feature = _test_seen_X.clone()
         self.test_seen_label = data_loader.test_seen_label 
-        self.test_unseen_feature = data_loader.test_unseen_feature.clone()
+        self.test_unseen_feature = _test_unseen_X.clone()
         self.test_unseen_label = data_loader.test_unseen_label 
         self.seenclasses = data_loader.seenclasses
         self.unseenclasses = data_loader.unseenclasses
@@ -34,24 +29,15 @@ class CLASSIFIER:
         self.input_dim = _train_X.size(1)
         self.cuda = _cuda
         self.model =  LINEAR_LOGSOFTMAX_CLASSIFIER(self.input_dim, self.nclass)
-        self.netFR = netFR
-        if self.netFR:
-            self.netFR.eval()
-            if self.opt == None:
-                self.input_dim = self.input_dim + dec_hidden_size + dec_size
-            elif self.opt.feature_component == 'FR':
-                self.input_dim = self.input_dim
-            elif self.opt.feature_component == 'FR_h':
-                self.input_dim = self.input_dim + dec_hidden_size
-            elif self.opt.feature_component == 'FR_h_a':
-                self.input_dim = self.input_dim + dec_hidden_size + dec_size
-
+        self.netDec = netDec
+        if self.netDec:
+            self.netDec.eval()
+            self.input_dim = self.input_dim + dec_size
+            self.input_dim += dec_hidden_size
             self.model =  LINEAR_LOGSOFTMAX_CLASSIFIER(self.input_dim, self.nclass)
-            self.train_X = self.compute_fear_out(self.train_X, self.input_dim)
-            
-            self.test_unseen_feature = self.compute_fear_out(self.test_unseen_feature, self.input_dim)
-            self.test_seen_feature = self.compute_fear_out(self.test_seen_feature, self.input_dim)
-
+            self.train_X = self.compute_dec_out(self.train_X, self.input_dim)
+            self.test_unseen_feature = self.compute_dec_out(self.test_unseen_feature, self.input_dim)
+            self.test_seen_feature = self.compute_dec_out(self.test_seen_feature, self.input_dim)
         self.model.apply(util.weights_init)
         self.criterion = nn.NLLLoss()
         self.input = torch.FloatTensor(_batch_size, self.input_dim) 
@@ -68,49 +54,12 @@ class CLASSIFIER:
         self.epochs_completed = 0
         self.ntrain = self.train_X.size()[0]
         if generalized:
-            # if opt.final_classifier == 'softmax':
-            if final_classifier == 'softmax':
-                self.acc_seen, self.acc_unseen, self.H, self.epoch= self.fit()
+            self.acc_seen, self.acc_unseen, self.H, self.epoch= self.fit()
             #print('Final: acc_seen=%.4f, acc_unseen=%.4f, h=%.4f' % (self.acc_seen, self.acc_unseen, self.H))
-            
-            # elif opt.final_classifier == 'knn':
-            elif final_classifier == 'knn':
-                raise Exception
-                # clf = knn_classifier_cuda(tr_X=self.train_X, tr_Y=self.train_Y, n_neighbors=opt.k_nn)
-                # self.acc_seen = clf.predict(te_X=self.test_seen_feature, te_Y=self.test_seen_label)
-                # self.acc_unseen = clf.predict(te_X=self.test_unseen_feature, te_Y=self.test_unseen_label)
-                # self.H = 2 * self.acc_seen * self.acc_unseen / (self.acc_seen + self.acc_unseen)
-                
-                clf = KNeighborsClassifier(n_neighbors=opt.k_nn)
-                clf.fit(X=self.train_X, y=self.train_Y)
-                pred_Y_s = torch.from_numpy(clf.predict(self.test_seen_feature))
-                pred_Y_u = torch.from_numpy(clf.predict(self.test_unseen_feature))
-                self.acc_seen = self.compute_per_class_acc_gzsl_knn(pred_Y_s, self.test_seen_label,  self.seenclasses)
-                self.acc_unseen = self.compute_per_class_acc_gzsl_knn( pred_Y_u, self.test_unseen_label,  self.unseenclasses)
-                self.H = 2 * self.acc_seen * self.acc_unseen / (self.acc_seen + self.acc_unseen)
-            else:
-                print("classifier is not existing")
-            
-            
         else:
-            # self.acc,self.best_model = self.fit_zsl() 
-            # if opt.final_classifier == 'softmax':
-            if final_classifier == 'softmax':
-                self.acc,self.best_model = self.fit_zsl() 
-            # elif opt.final_classifier == 'knn':
-            elif final_classifier == 'knn':
-                raise Exception
-                ### clf = knn_classifier_cuda(tr_X=self.train_X, tr_Y=self.train_Y, n_neighbors=opt.k_nn)
-                ### self.acc = clf.predict(te_X=self.test_unseen_feature, te_Y=self.test_unseen_label)
-                zsl_clf = KNeighborsClassifier(n_neighbors=opt.k_nn)
-                zsl_clf.fit(X=self.train_X, y=self.train_Y)
-                pred_Y_u = torch.from_numpy(zsl_clf.predict(self.test_unseen_feature))
-                self.acc = self.compute_per_class_acc_knn(pred_Y_u, util.map_label(self.test_unseen_label, self.unseenclasses), self.unseenclasses.size(0))
-            else:
-                print("classifier is not existing")
-            
-            
-            
+            self.acc,self.best_model = self.fit_zsl() 
+            #print('acc=%.4f' % (self.acc))
+
     def fit_zsl(self):
         best_acc = 0
         mean_loss = 0
@@ -127,8 +76,7 @@ class CLASSIFIER:
                 labelv = Variable(self.label)
                 output = self.model(inputv)
                 loss = self.criterion(output, labelv)
-                #mean_loss += loss.data[0]
-                mean_loss += loss.item()
+                mean_loss += loss.data.item()
                 loss.backward()
                 self.optimizer.step()
                 #print('Training classifier loss= ', loss.data[0])
@@ -152,6 +100,7 @@ class CLASSIFIER:
                 batch_input, batch_label = self.next_batch(self.batch_size) 
                 self.input.copy_(batch_input)
                 self.label.copy_(batch_label)
+                   
                 inputv = Variable(self.input)
                 labelv = Variable(self.label)
                 output = self.model(inputv)
@@ -205,7 +154,7 @@ class CLASSIFIER:
             # from index start to index end-1
             return self.train_X[start:end], self.train_Y[start:end]
 
-
+    @torch.no_grad()
     def val_gzsl(self, test_X, test_label, target_classes): 
         start = 0
         ntest = test_X.size()[0]
@@ -213,27 +162,26 @@ class CLASSIFIER:
         for i in range(0, ntest, self.batch_size):
             end = min(ntest, start+self.batch_size)
             if self.cuda:
-                with torch.no_grad():
-                    inputX = Variable(test_X[start:end].cuda())
+                inputX = Variable(test_X[start:end].cuda())
             else:
-                with torch.no_grad():
-                    inputX = Variable(test_X[start:end])
+                inputX = Variable(test_X[start:end])
             output = self.model(inputX)  
             _, predicted_label[start:end] = torch.max(output.data, 1)
             start = end
 
-        acc = self.compute_per_class_acc_gzsl(test_label, predicted_label, target_classes)
+        acc = self.compute_per_class_acc_gzsl(test_label, predicted_label, target_classes.cpu())
         return acc
 
     def compute_per_class_acc_gzsl(self, test_label, predicted_label, target_classes):
         acc_per_class = 0
         for i in target_classes:
             idx = (test_label == i)
-            acc_per_class += torch.sum(test_label[idx]==predicted_label[idx]).float() / torch.sum(idx)
+            acc_per_class += torch.sum(test_label[idx]==predicted_label[idx]) / torch.sum(idx)
         acc_per_class /= target_classes.size(0)
         return acc_per_class 
 
     # test_label is integer 
+    @torch.no_grad()
     def val(self, test_X, test_label, target_classes): 
         start = 0
         ntest = test_X.size()[0]
@@ -241,81 +189,41 @@ class CLASSIFIER:
         for i in range(0, ntest, self.batch_size):
             end = min(ntest, start+self.batch_size)
             if self.cuda:
-                with torch.no_grad():
-                    inputX = Variable(test_X[start:end].cuda())
+                inputX = Variable(test_X[start:end].cuda())
             else:
-                with torch.no_grad():
-                    inputX = Variable(test_X[start:end])
+                inputX = Variable(test_X[start:end])
             output = self.model(inputX) 
             _, predicted_label[start:end] = torch.max(output.data, 1)
             start = end
 
-        acc = self.compute_per_class_acc(util.map_label(test_label, target_classes), predicted_label, target_classes.size(0))
+        acc = self.compute_per_class_acc(util.map_label(test_label, target_classes.cpu()), predicted_label, target_classes.size(0))
         return acc
 
     def compute_per_class_acc(self, test_label, predicted_label, nclass):
         acc_per_class = torch.FloatTensor(nclass).fill_(0)
         for i in range(nclass):
             idx = (test_label == i)
-            acc_per_class[i] = torch.sum(test_label[idx]==predicted_label[idx]).float() / torch.sum(idx)
+            acc_per_class[i] = torch.sum(test_label[idx]==predicted_label[idx]) / torch.sum(idx)
         return acc_per_class.mean() 
 
-
-    def compute_fear_out(self, test_X, new_size):
+    @torch.no_grad()
+    def compute_dec_out(self, test_X, new_size):
         start = 0
         ntest = test_X.size()[0]
         new_test_X = torch.zeros(ntest,new_size)
         for i in range(0, ntest, self.batch_size):
             end = min(ntest, start+self.batch_size)
             if self.cuda:
-                with torch.no_grad():
-                    inputX = Variable(test_X[start:end].cuda())
+                inputX = Variable(test_X[start:end].cuda())
             else:
-                with torch.no_grad():
-                    inputX = Variable(test_X[start:end])
-            _,_,_,_, _, feat2 = self.netFR(inputX)
-            feat1 = self.netFR.getLayersOutDet()
-
-            if self.opt == None:
-                new_test_X[start:end] = torch.cat([inputX,feat1,feat2],dim=1).data.cpu()
-            elif self.opt.feature_component == 'FR':
-                new_test_X[start:end] = inputX.data.cpu()
-            elif self.opt.feature_component == 'FR_h':
-                new_test_X[start:end] = torch.cat([inputX,feat1],dim=1).data.cpu()
-            elif self.opt.feature_component == 'FR_h_a':
-                new_test_X[start:end] = torch.cat([inputX,feat1,feat2],dim=1).data.cpu()
-            
+                inputX = Variable(test_X[start:end])
+            feat1 = self.netDec(inputX)
+            feat2 = self.netDec.getLayersOutDet()
+            new_test_X[start:end] = torch.cat([inputX,feat1,feat2],dim=1).data.cpu()
             start = end
-            # pca = PCA(n_components=4096,whiten=False)
-            # fit = pca.fit(new_test_X)
-            # features = pca.fit_transform(new_test_X)
-            # features = torch.from_numpy(features)
-            # fnorm = torch.norm(features, p=2, dim=1, keepdim=True)
-            # new_test_X = features.div(fnorm.expand_as(features))
         return new_test_X
 
-    def compute_per_class_acc_gzsl_knn( self,  predicted_label, test_label, target_classes):
-        acc_per_class = 0
-        for i in target_classes:
-            idx = (predicted_label == i)
-            if torch.sum(idx)==0:
-                acc_per_class +=0
-            else:
-                acc_per_class += float(torch.sum(predicted_label[idx] == test_label[idx])) / float(torch.sum(idx))
-        acc_per_class /= float(target_classes.size(0))
-        return acc_per_class
-        
-    def compute_per_class_acc_knn(self, predicted_label, test_label, nclass):
-        acc_per_class = torch.FloatTensor(nclass).fill_(0)
-        for i in range(nclass):
-            idx = (test_label == i)
-            if torch.sum(idx)==0:
-                acc_per_class +=0
-            else:
-                acc_per_class += torch.sum(predicted_label[idx]==test_label[idx]).float() / torch.sum(idx)
-        acc_per_class /= float(nclass)
-        return acc_per_class.mean() 
-    
+
 class LINEAR_LOGSOFTMAX_CLASSIFIER(nn.Module):
     def __init__(self, input_dim, nclass):
         super(LINEAR_LOGSOFTMAX_CLASSIFIER, self).__init__()

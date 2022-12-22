@@ -1,6 +1,6 @@
 # Semantic Compression Embedding for Generative Zero-Shot Learning
 
-**<font color='orange'>!!! Updates of this project will be finished before </font>*****<font color='green'>Jan 1, 2023.</font>***
+***This repository is still in updating ...***
 
 This repository contains online resources of the paper **"Semantic Compression Embedding for Generative Zero-Shot Learning"** accepted to IJCAI-2022. [[PDF](https://www.ijcai.org/proceedings/2022/0134.pdf)]
 
@@ -38,9 +38,7 @@ $ python preprocessing.py --dataset AWA2 --compression
 In `./wandb_config`, we provide our parameters setting of conventional ZSL (CZSL) and generalized ZSL (GZSL) tasks for CUB, SUN, and AWA2. You can run the following commands to train the **SC-EGG** from scratch:
 
 ```
-$ python train_joint_CUB.py
-$ python train_joint_SUN.py 
-$ python train_joint_AWA2.py 
+$ python train_SUN.py
 ```
 
 ## Results

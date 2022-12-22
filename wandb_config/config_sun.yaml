@@ -1,0 +1,171 @@
+device:
+  value: cuda:0
+dataset:
+  value: SUN
+dataroot:
+  value: ./VAEGAN_datasets
+image_embedding:
+  value: res101
+class_embedding:
+  value: att
+syn_num:
+  value: 400
+gzsl:
+  value: True
+preprocessing:
+  value: True
+standardization:
+  value: False
+workers:
+  value: 8
+batch_size:
+  value: 64
+  # value: 50
+  # value: 300
+resSize:
+  value: 2048
+attSize:
+  value: 102
+nz:
+  value: 102
+ngh:
+  value: 4096
+ndh:
+  value: 4096
+nepoch:
+  value: 50
+critic_iter:
+  value: 5
+lambda1:
+  value: 10.
+lambda2:
+  value: 10.
+lr:
+  value: 0.001
+feed_lr:
+  value: 0.0001
+dec_lr:
+  value: 0.0001
+classifier_lr:
+  value: 0.0005
+beta1:
+  value: 0.5
+cuda:
+  value: True
+encoded_noise:
+  value: True
+manualSeed:
+  value: 56441
+nclass_all:
+  value: 717
+validation:
+  value: False
+encoder_layer_sizes:
+  value: [2048, 4096]
+decoder_layer_sizes:
+  value: [4096, 2048]
+gammaD:
+  value: 1
+gammaG:
+  value: 1
+gammaG_D2:
+  value: 1000
+gammaD2:
+  value: 1000
+latent_size:
+  value: 102
+conditional:
+  value: True
+a1:
+  value: 0.0
+a2:
+  value: 0.0
+recons_weight:
+  value: 0.01
+feedback_loop:
+  value: 2
+freeze_dec:
+  value: False
+
+test_freq_epoch:
+  value: 1
+
+# DAZLE
+is_atten_model:
+  value: True
+atten_dim_v:
+  value: 300
+atten_use_unzip:
+  value: True
+atten_imgsize:
+  value: 448
+atten_trainable_w2v:
+  value: True
+atten_normalize_V:
+  value: False
+atten_normalize_F:
+  value: True
+train_all_epoch:
+  value: -1
+is_save_model:
+  value: False
+# CLSDAZLE
+atten_compose_type:
+  value: mlp
+atten_compose_type_runtime:
+  value: avg
+atten_compose_norm:
+  # value: True
+  value: False
+atten_lambda_localCE:
+  value: 1.0
+atten_lambda_globalCE:
+  value: 1.0
+atten_pretrain:
+  value: True
+  # value: False
+atten_model_path:
+  value: saved_model/
+atten_itnum:
+  value: 2000
+
+# TS
+ts_train:
+  value: True
+  # value: False
+ts_itnum:
+  value: 4000
+ts_model_path:
+  value: saved_model/
+
+# VAEGAN
+is_load_vaegan:
+  # value: True
+  value: False
+vaegan_model_path:
+  value: saved_model/
+is_dec:
+  value: True
+  # value: False
+is_feedback:
+  value: True
+  # value: False
+dec_unseen:
+  # value: True
+  value: False
+recons_weight_unseen:
+  value: 0.1
+vae_loss_weight:
+  value: 1.0
+is_rec_cls_loss:
+  value: True
+  # value: False
+is_gen_unseen_cls_loss:
+  value: True
+  # value: False
+is_gen_seen_cls_loss:
+  value: False
+rec_seen_cls_weight:
+  value: 1.0
+gen_unseen_cls_weight:
+  value: 0.001
